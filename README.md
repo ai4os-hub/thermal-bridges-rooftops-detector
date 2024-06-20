@@ -1,11 +1,11 @@
 # tbbrdet_api
-[![Build Status](https://jenkins.services.ai4os.eu/buildStatus/icon?job=AI4OS-HUB-TEST%2Ftbbrdet_api%2Fmaster)](https://jenkins.services.ai4os.eu/job/AI4OS-HUB-TEST/job/tbbrdet_api/job/master/)
+[![Build Status](https://jenkins.services.ai4os.eu/buildStatus/icon?job=AI4OS-hub/thermal-bridges-rooftops-detector/main)](https://jenkins.services.ai4os.eu/job/AI4OS-hub/job/thermal-bridges-rooftops-detector/job/main/)
 
 DEEPaaS API for TBBRDet Model
 
 To launch it, first install the package via the provided bash scripts, then run [deepaas](https://github.com/ai4os/DEEPaaS):
 ```bash
-wget https://raw.githubusercontent.com/emvollmer/tbbrdet_api/master/deployment_setup.sh
+wget https://raw.githubusercontent.com/ai4os-hub/thermal-bridges-rooftops-detector/main/deployment_setup.sh
 source deployment_setup.sh 	# this sets up the deployment (CUDA, CUDNN, Python3.6)
 source install_TBBRDet.sh 	# this sets up the venv with all required packages and installs the both API and submodule TBBRDet as editable
 deep-start
@@ -18,7 +18,6 @@ source venv/bin/activate
 deep-start
 ```
 
-The associated Docker container for this module can be found in https://github.com/emvollmer/DEEP-OC-tbbrdet_api.
 
 ## Project structure
 ```

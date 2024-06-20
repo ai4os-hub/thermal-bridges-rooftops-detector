@@ -9,7 +9,7 @@
 # Jenkinsfile, not here!
 
 # Base image
-FROM deephdc/uc-emvollmer-deep-oc-tbbrdet_api:base
+FROM ai4oshub/thermal-bridges-rooftops-detector:base
 
 LABEL maintainer='Elena Vollmer'
 LABEL version='0.0.1'

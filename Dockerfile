@@ -13,14 +13,14 @@
 ARG tag=base
 
 # Base image, e.g. tensorflow/tensorflow:2.9.1
-FROM deephdc/uc-emvollmer-deep-oc-tbbrdet_api:${tag}
+FROM ai4oshub/thermal-bridges-rooftops-detector:${tag}
 
 LABEL maintainer='Elena Vollmer'
 LABEL version='0.0.1'
 # Deepaas API for TBBRDet Model
 
 # What user branch to clone [!]
-ARG branch=master
+ARG branch=main
 
 # Install Ubuntu packages
 # - gcc is needed in Pytorch images because deepaas installation might break otherwise (see docs) (it is already installed in tensorflow images)
@@ -54,8 +54,8 @@ ENV SHELL /bin/bash
 
 # Install user app
 # get code repository
-RUN git clone --depth 1 -b $branch --recurse-submodules  https://github.com/emvollmer/tbbrdet_api.git && \
-    cd tbbrdet_api && \
+RUN git clone --depth 1 -b $branch --recurse-submodules  https://github.com/ai4os-hub/thermal-bridges-rooftops-detector.git && \
+    cd thermal-bridges-rooftops-detector && \
     git pull --recurse-submodules && \
     git submodule update --remote --recursive && \
     # those packages below should be in requirements.txt
@@ -70,17 +70,17 @@ RUN git clone --depth 1 -b $branch --recurse-submodules  https://github.com/emvo
     cd ..
 
 # download example model for inference (pretrained MaskRCNN Swin-T)
-RUN mkdir -p /srv/tbbrdet_api/models/swin/coco/2023-12-07_130038 && \
-    wget -O /srv/tbbrdet_api/models/swin/coco/2023-12-07_130038/mask_rcnn_swin-t-p4-w7_fpn_fp16_ms-crop-3x_coco.pretrained.py \
+RUN mkdir -p /srv/thermal-bridges-rooftops-detector/models/swin/coco/2023-12-07_130038 && \
+    wget -O /srv/thermal-bridges-rooftops-detector/models/swin/coco/2023-12-07_130038/mask_rcnn_swin-t-p4-w7_fpn_fp16_ms-crop-3x_coco.pretrained.py \
     'https://data-deep.a.incd.pt/index.php/s/3zdj9B6crYgcrKo/download?path=%2F&files=mask_rcnn_swin-t-p4-w7_fpn_fp16_ms-crop-3x_coco.pretrained.py' && \
-    wget -O /srv/tbbrdet_api/models/swin/coco/2023-12-07_130038/best_AR@1000_epoch_33.pth \
+    wget -O /srv/thermal-bridges-rooftops-detector/models/swin/coco/2023-12-07_130038/best_AR@1000_epoch_33.pth \
     'https://data-deep.a.incd.pt/index.php/s/3zdj9B6crYgcrKo/download?path=%2F&files=best_AR@1000_epoch_33.pth' && \
-    wget -O /srv/tbbrdet_api/models/swin/coco/2023-12-07_130038/latest.pth \
+    wget -O /srv/thermal-bridges-rooftops-detector/models/swin/coco/2023-12-07_130038/latest.pth \
     'https://data-deep.a.incd.pt/index.php/s/3zdj9B6crYgcrKo/download?path=%2F&files=latest.pth'
 
 # download COCO pretrained weights for Swin-T model training
-RUN mkdir -p /srv/tbbrdet_api/models/swin/coco/pretrained_weights && \
-    wget -O /srv/tbbrdet_api/models/swin/coco/pretrained_weights/mask_rcnn_swin-t-p4-w7_fpn_fp16_ms-crop-3x_coco_20210908_165006-90a4008c.pth \
+RUN mkdir -p /srv/thermal-bridges-rooftops-detector/models/swin/coco/pretrained_weights && \
+    wget -O /srv/thermal-bridges-rooftops-detector/models/swin/coco/pretrained_weights/mask_rcnn_swin-t-p4-w7_fpn_fp16_ms-crop-3x_coco_20210908_165006-90a4008c.pth \
     'https://download.openmmlab.com/mmdetection/v2.0/swin/mask_rcnn_swin-t-p4-w7_fpn_fp16_ms-crop-3x_coco/mask_rcnn_swin-t-p4-w7_fpn_fp16_ms-crop-3x_coco_20210908_165006-90a4008c.pth'
 
 # Open ports: DEEPaaS (5000), Monitoring (6006), Jupyter (8888)

@@ -74,13 +74,14 @@
     "date_creation": "2023-02-07",
     "dataset_url": "https://zenodo.org/records/4767772",
     "sources": {
-		"dockerfile_repo": "https://github.com/emvollmer/tbbrdet_api/docker",
-		"docker_registry_repo": "deephdc/uc-emvollmer-deep-oc-tbbrdet_api",
-		"code": "https://github.com/emvollmer/tbbrdet_api"
+		"dockerfile_repo": "https://github.dev/ai4os-hub/thermal-bridges-rooftops-detector",
+		"docker_registry_repo": "ai4oshub/thermal-bridges-rooftops-detector",
+		"code": "https://github.dev/ai4os-hub/thermal-bridges-rooftops-detector",
+        "ai4_template": "ai4-template/1.9.9"
 	},
     "continuous_integration": {
-        "build_status_badge": "https://jenkins.services.ai4os.eu/buildStatus/icon?job=AI4OS-HUB-TEST%2Ftbbrdet_api%2Fmaster",
-        "build_status_url": "https://jenkins.services.ai4os.eu/job/AI4OS-HUB-TEST/job/tbbrdet_api/job/master/"
+        "build_status_badge": "https://jenkins.services.ai4os.eu/buildStatus/icon?job=AI4OS-hub/thermal-bridges-rooftops-detector/main",
+        "build_status_url": "https://jenkins.services.ai4os.eu/job/AI4OS-hub/job/thermal-bridges-rooftops-detector/job/main/"
     },
     "tosca": [
         {
