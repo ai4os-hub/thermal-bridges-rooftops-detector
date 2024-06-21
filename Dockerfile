@@ -16,7 +16,7 @@ ARG tag=base
 FROM ai4oshub/thermal-bridges-rooftops-detector:${tag}
 
 LABEL maintainer='Elena Vollmer'
-LABEL version='0.0.1'
+LABEL version='0.1.0'
 # Deepaas API for TBBRDet Model
 
 # What user branch to clone [!]
@@ -46,7 +46,7 @@ ENV RCLONE_CONFIG=/srv/.rclone/rclone.conf
 
 # Initialization scripts
 # deep-start can install JupyterLab or VSCode if requested
-RUN git clone https://github.com/deephdc/deep-start /srv/.deep-start && \
+RUN git clone https://github.com/ai4os/deep-start /srv/.deep-start && \
     ln -s /srv/.deep-start/deep-start.sh /usr/local/bin/deep-start
 
 # Necessary for the Jupyter Lab terminal
@@ -58,13 +58,6 @@ RUN git clone --depth 1 -b $branch --recurse-submodules  https://github.com/ai4o
     cd thermal-bridges-rooftops-detector && \
     git pull --recurse-submodules && \
     git submodule update --remote --recursive && \
-    # those packages below should be in requirements.txt
-    pip3 install --no-cache-dir \
-        future \
-        tensorboard \
-        mlflow \
-        joblib \
-        tqdm && \
     pip3 install --no-cache-dir -e ./TBBRDet && \
     pip3 install --no-cache-dir -e . && \
     cd ..

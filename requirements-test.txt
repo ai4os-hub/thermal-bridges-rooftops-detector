@@ -8,11 +8,6 @@ torch==1.8.0
 torchvision==0.9.0
 torchaudio==0.8.0
 openmim
-future
-tensorboard
-mlflow
-joblib
-tqdm
 
 flake8
 bandit>=1.1.0 # Apache-2.0
@@ -21,7 +16,6 @@ bandit>=1.1.0 # Apache-2.0
 # https://bitbucket.org/ned/coveragepy/issues/519/
 coverage!=4.4,>=4.0 # Apache-2.0
 
-stestr>=1.0.0 # Apache-2.0
 testtools>=1.4.0
 
 pytest
