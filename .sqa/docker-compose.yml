@@ -5,11 +5,11 @@ services:
     image: "ai4oshub/thermal-bridges-rooftops-detector:cicd"
     container_name: "${BUILD_TAG}"
     hostname: "${BUILD_TAG}"
-    working_dir: /srv
+    working_dir: /srv/app
     command: >
-      sh -c "git config --global --add safe.directory /srv &&
+      sh -c "git config --global --add safe.directory /srv/app &&
              tail -f /dev/null"
     volumes:
       - type: bind
         source: ./
-        target: /srv
+        target: /srv/app

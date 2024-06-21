@@ -12,7 +12,7 @@ sqa_criteria:
         commands:
         - sh -c 'git config --global --add safe.directory $PWD/TBBRDet'
         - sh -c 'git submodule update --init --remote --recursive'
-        - sh -c "./sqa-init.sh && flake8 --format=pylint tbbrdet_api"
+        - tox -e qc.sty
 
   qc_coverage:
     repos:
@@ -21,7 +21,7 @@ sqa_criteria:
         commands:
         - sh -c 'git config --global --add safe.directory $PWD/TBBRDet'
         - sh -c 'git submodule update --init --remote --recursive'
-        - sh -c "pytest --cov=tbbrdet_api --cov-report=html:./htmlcov tbbrdet_api/tests"
+        - tox -e qc.cov
 
   qc_security:
     repos:
@@ -30,6 +30,6 @@ sqa_criteria:
         commands:
         - sh -c 'git config --global --add safe.directory $PWD/TBBRDet'
         - sh -c 'git submodule update --init --remote --recursive'
-        - sh -c "bandit -c bandit.yaml -r tbbrdet_api -x tests"
+        - tox -e qc.sec
 
 timeout: 1200
