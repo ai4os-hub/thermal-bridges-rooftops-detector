@@ -74,9 +74,9 @@
     "date_creation": "2023-02-07",
     "dataset_url": "https://zenodo.org/records/4767772",
     "sources": {
-		"dockerfile_repo": "https://github.dev/ai4os-hub/thermal-bridges-rooftops-detector",
+		"dockerfile_repo": "https://github.com/ai4os-hub/thermal-bridges-rooftops-detector",
 		"docker_registry_repo": "ai4oshub/thermal-bridges-rooftops-detector",
-		"code": "https://github.dev/ai4os-hub/thermal-bridges-rooftops-detector",
+		"code": "https://github.com/ai4os-hub/thermal-bridges-rooftops-detector",
         "ai4_template": "ai4-template/1.9.9"
 	},
     "continuous_integration": {

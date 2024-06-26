@@ -16,7 +16,7 @@ ARG tag=20.04
 FROM ubuntu:${tag}
 
 LABEL maintainer='Elena Vollmer'
-LABEL version='0.0.1'
+LABEL version='0.1.0'
 # Deepaas API for TBBRDet Model
 
 # Install Ubuntu packages

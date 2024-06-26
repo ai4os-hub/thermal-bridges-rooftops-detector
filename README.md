@@ -1,7 +1,7 @@
 # tbbrdet_api
 [![Build Status](https://jenkins.services.ai4os.eu/buildStatus/icon?job=AI4OS-hub/thermal-bridges-rooftops-detector/main)](https://jenkins.services.ai4os.eu/job/AI4OS-hub/job/thermal-bridges-rooftops-detector/job/main/)
 
-DEEPaaS API for TBBRDet Model
+DEEPaaS API for [TBBRDet model](https://github.com/Helmholtz-AI-Energy/TBBRDet)
 
 To launch it, first install the package via the provided bash scripts, then run [deepaas](https://github.com/ai4os/DEEPaaS):
 ```bash

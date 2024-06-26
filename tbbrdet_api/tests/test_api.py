@@ -42,7 +42,7 @@ class TestModelMethods(unittest.TestCase):
             self.meta["license"].lower(), "BSD-3-Clause".lower(),
         )
         self.assertIn(
-            "0.0.1", self.meta["version"]
+            "0.1.0", self.meta["version"]
         )
 
 

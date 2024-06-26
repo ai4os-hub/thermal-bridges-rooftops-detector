@@ -12,7 +12,7 @@
 FROM ai4oshub/thermal-bridges-rooftops-detector:base
 
 LABEL maintainer='Elena Vollmer'
-LABEL version='0.0.1'
+LABEL version='0.1.0'
 # CI/CD image for the TBBRDet Model
 
 # Install Ubuntu packages
