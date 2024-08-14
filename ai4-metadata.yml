@@ -25,7 +25,7 @@ description: |-
   The docker image contains a pretrained Swin-T model for inference (tbbrdet_api/models/swin/coco/2023-12-07_130038)  that expects 5-channel numpy inputs (RGB, T, H) formatted in the same way as those in the zenodo dataset. The inference results are automatically saved to the used model's timestamp folder. 
   
   **References**
-  [1] Mayer, Z., Kahn, J., Hou, Y. et al. Deep learning approaches to building rooftop thermal bridge detection from aerial images. " " In Automation in Construction Vol. 146, p. 104690 (2023). Elsevier BV. https://doi.org/10.1016/j.autcon.2022.104690,
+  [1] Mayer, Z., Kahn, J., Hou, Y. et al. Deep learning approaches to building rooftop thermal bridge detection from aerial images. In Automation in Construction Vol. 146, p. 104690 (2023). Elsevier BV. https://doi.org/10.1016/j.autcon.2022.104690,
   [2] Mayer, Z., Kahn, J., Götz, M. et al. Thermal Bridges on Building Rooftops. In Sci Data 10, 268 (2023). https://doi.org/10.1038/s41597-023-02140-z
 dates:
   created: '2023-02-07'
@@ -36,10 +36,10 @@ links:
   ai4_template: ai4-template/1.9.9
   dataset: https://zenodo.org/records/4767772
 tags:
+  - deep learning
   - object detection
   - instance segmentation
   - multi-spectral data
-  - deep learning
 tasks:
   - Computer Vision
 categories:
@@ -47,6 +47,6 @@ categories:
   - AI4 pre trained
   - AI4 inference
 libraries:
-  - Pytorch
+  - PyTorch
 data-type:
   - Image
