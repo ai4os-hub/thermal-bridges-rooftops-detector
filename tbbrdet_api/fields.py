@@ -141,7 +141,7 @@ class PredictArgsSchema(Schema):
         metadata={
             'type': "file",
             'location': "form",
-            'description': 'Input an image.'
+            'description': 'Input a .npy file.'
         }
     )
 
