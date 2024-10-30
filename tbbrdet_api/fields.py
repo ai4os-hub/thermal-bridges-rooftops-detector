@@ -146,7 +146,8 @@ class PredictArgsSchema(Schema):
     )
 
     predict_model_dir = fields.Str(
-        load_default='/srv/tbbrdet_api/models/swin/coco/2023-12-07_130038',
+        load_default='/srv/thermal-bridges-rooftops-detector/models/swin/coco/'
+                     '2023-12-07_130038',
         metadata={
             # 'enum': ls_folders(configs.MODEL_PATH, "best*.pth") +
             #         ls_folders(configs.REMOTE_MODEL_PATH, "best*.pth"),
