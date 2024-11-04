@@ -63,9 +63,10 @@ def infer(args):
             # "--out-dir", str(out_path)
         ]))
 
-        run_subprocess(command=infer_cmd, process_message="inference",
-                       limit_gb=configs.LIMIT_GB,
-                       timeout=10000)
+        run_subprocess(
+            command=infer_cmd,
+            process_message="inference"
+        )   # with default timeout = 10 min
 
         result.append(str(out_path))
         print(f'Inference result was saved to {out_path}')

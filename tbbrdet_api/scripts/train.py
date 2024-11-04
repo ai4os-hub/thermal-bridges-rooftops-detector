@@ -172,9 +172,13 @@ def main(args):
           f"Training with train_cmd:\n{train_cmd}\n"
           f"=====================")
 
-    run_subprocess(command=train_cmd, process_message="training",
-                   timeout=10000)
+    run_subprocess(
+        command=train_cmd,
+        process_message="training",
+        timeout=7200
+    )   # with timeout = 2 hours
     logger.info(f'Model and logs were saved to {args["model_dir"]}')
+
     return args['model_dir']
 
 

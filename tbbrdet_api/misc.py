@@ -8,7 +8,6 @@ import logging
 import subprocess
 from subprocess import TimeoutExpired
 import time
-import threading
 from pathlib import Path
 import sys
 import shutil
@@ -19,13 +18,6 @@ from tbbrdet_api import configs
 
 logger = logging.getLogger('__name__')
 logger.setLevel(configs.LOG_LEVEL)      # previously: logging.DEBUG
-
-stop_thread = threading.Event()
-
-
-class DiskSpaceExceeded(Exception):
-    """Raised when disk space is exceeded."""
-    pass
 
 
 def _catch_error(f):
@@ -98,10 +90,8 @@ def extract_zst(zst_folder: Path = configs.DATA_PATH):
 
         run_subprocess(
             tar_command,
-            process_message=f"unpacking '{zst_path.name}'",
-            limit_gb=configs.DATA_LIMIT_GB,
-            path_to_check=configs.DATA_PATH
-        )
+            process_message=f"unpacking '{zst_path.name}'"
+        )   # with default timeout = 10 min
 
         # check if zst file is in config.DATA_PATH, if so delete to save space
         if configs.DATA_PATH in zst_path.parents:
@@ -139,6 +129,7 @@ def get_weights_folder(data: dict):
 
     Args:
         data (dict): Arguments from fields.py (user inputs in swagger ui)
+
     Returns:
         Path to the folder containing pretrained weights
     """
@@ -177,9 +168,7 @@ def copy_file(frompath: Path, topath: Path):
 
 
 def run_subprocess(command: list, process_message: str,
-                   limit_gb: int = configs.LIMIT_GB,
-                   path_to_check: Path = configs.BASE_PATH,
-                   timeout: int = 500):
+                   timeout: int = 600):
     """
     Function to run a subprocess command.
     Tox security issue with subprocess is ignored here using # nosec.
@@ -187,38 +176,20 @@ def run_subprocess(command: list, process_message: str,
     Args:
         command (list): Command to be run.
         process_message (str): Message to be printed to the console.
-        limit_gb (int): Limit on the amount of disk space available on the node
-        path_to_check (Path): Directory that shouldn't exceed the GB limit
         timeout (int): Time limit by which process is limited
 
     Raises:
         TimeoutExpired: If timeout exceeded
-        DiskSpaceExceeded: If disk space limit exceeded
         Exception: If any other error occurred
     """
     log_disk_usage(f"Begin: {process_message}")
     str_command = " ".join(command)
 
-    # get absolute limit by comparing to remaining available space on node
-    limit_gb = check_available_node_space(limit_gb)
-
-    if get_disk_usage(folder=path_to_check) > limit_gb:
-        log_disk_usage(f"FAILED: {process_message}")
-        logger.error(f"Disk space limit of {limit_gb} GB exceeded "
-                     f"before {process_message} subprocess can start!")
-        raise DiskSpaceExceeded(f"Disk space limit of {limit_gb} GB exceeded "
-                                f"before {process_message} process can start!")
+    print(f"=================================\n"
+          f"Running {process_message} command:\n'{str_command}'\n"
+          f"=================================")  # logger.info
 
     try:
-        # monitor disk space usage in the background
-        monitor_thread = threading.Thread(target=monitor_disk_space,
-                                          args=(limit_gb, path_to_check, ),
-                                          daemon=True)
-        monitor_thread.start()
-        print(f"=================================\n"
-              f"Running {process_message} command:\n'{str_command}'\n"
-              f"=================================")    # logger.info
-
         process = subprocess.Popen(      # nosec
                 command,
                 stdout=subprocess.PIPE,  # Capture stdout
@@ -227,14 +198,9 @@ def run_subprocess(command: list, process_message: str,
         )
         return_code = process.wait(timeout=timeout)
 
-        if stop_thread.is_set():
-            log_disk_usage(f"FAILED: {process_message}")
-            raise DiskSpaceExceeded(
-                f"Disk space exceeded during {process_message} "
-                f"while running\n'{str_command}'\n")
-
         if return_code == 0:
             log_disk_usage(f"Finished: {process_message}")
+
         else:
             _, err = process.communicate()
             print(f"Error while running '{str_command}' for {process_message}."
@@ -250,9 +216,9 @@ def run_subprocess(command: list, process_message: str,
         # NOTE: can't "raise HTTPServerError(reason=f"Timeout during ...)"
         #  because it causes a TypeError: __init__ required ...
 
-    except DiskSpaceExceeded as e:
+    except Exception as e:
         process.terminate()
-        logger.error(str(e))
+        logger.error(f"An error occurred during {process_message}: {str(e)}")
         raise
         # NOTE: can't "raise HTTPServerError(reason=str(e))"
         #  because it causes a TypeError: __init__ required ..
@@ -260,73 +226,16 @@ def run_subprocess(command: list, process_message: str,
     return
 
 
-def monitor_disk_space(limit_gb: int, path_to_check: Path):
-    """
-    Thread function to monitor disk space and check the current usage
-    doesn't exceed the defined limit.
-
-    Raises:
-        DiskSpaceExceeded: If available disk space exceeded during threading
-    """
-    while True:
-        time.sleep(3)
-
-        stored_gb = get_disk_usage(Path(path_to_check))
-
-        if stored_gb >= limit_gb:
-            stop_thread.set()
-            sys.exit()
-
-
-def check_available_node_space(limit_gb: int = configs.LIMIT_GB):
-    """
-    Check overall data limit on node and redefine limit if necessary.
-
-    Args:
-        limit_gb: user defined disk space limit (in GB)
-
-    Returns:
-        limit (gb) that should not be exceeded by this deployment,
-        taking into account the overall available node space
-    """
-    try:
-        # get available space on entire node (with additional buffer of 3 GB)
-        available_gb = int(subprocess.getoutput(
-            "df -h | grep 'overlay' | awk '{print $4}'"
-        ).split("G")[0])
-        available_gb = max(available_gb - 3, 0)
-    except ValueError as e:
-        logger.error(f"ValueError: Node disk space not readable. "
-                     f"Using provided limit of {limit_gb} GB.")
-        raise HTTPException(reason=str(e)) from e
-
-    current_gb = get_disk_usage()
-    leftover_gb = round(limit_gb - current_gb, 2)
-    if leftover_gb < available_gb:
-        return limit_gb
-    else:
-        new_limit_gb = round(current_gb + available_gb, 2)
-        print(f"Available disk space on node ({available_gb} GB) is less "
-              f"than the leftover deployment space ({leftover_gb} GB) "
-              f"until the user-defined limit ({limit_gb} GB) is reached. "
-              f"Limit will be reduced to {new_limit_gb} GB.")  # logger.warning
-        return new_limit_gb
-
-
-def get_disk_usage(folder: Path = configs.BASE_PATH):
-    """Get the current amount of GB (rounded to two decimals) stored
-    in the provided folder.
-    """
-    return round(sum(f.stat().st_size for f in folder.rglob('*')
-                     if f.is_file()) / (1024 ** 3), 2)
-
-
 def log_disk_usage(process_message: str):
     """Log used disk space to the terminal with a process_message describing
     what has occurred.
     """
+    disk_usage = round(
+        sum(f.stat().st_size for f in configs.BASE_PATH.rglob('*')
+        if f.is_file()) / (1024 ** 3), 2
+    )
     print(f"{process_message} --- Repository currently takes up "
-          f"{get_disk_usage()} GB.")  # logger.info
+          f"{disk_usage} GB.")  # logger.info
 
 
 if __name__ == '__main__':
