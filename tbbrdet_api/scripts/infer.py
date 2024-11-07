@@ -33,13 +33,17 @@ def infer(args):
         # Input file is path or directory
         npy_paths = collect_image_paths(Path(args['input']))
     except TypeError:
-        # Input file is from a browsing webargs field
+        # Input file is path from a browsing webargs field
         tmp_filepath = Path(args['input'].filename)
         new_filepath = Path(configs.DATA_PATH, args['input'].original_filename)
+        if new_filepath.suffix != ".npy":
+            raise ValueError(
+                f"Selected input '{new_filepath.name}' is not a .npy!"
+            )
         shutil.copy(tmp_filepath, new_filepath)
         npy_paths = [new_filepath]
     except Exception as e:
-        raise HTTPError(e)
+        raise ValueError(e)
 
     print("Predicting on image(s):\n", npy_paths)
     print("Inference starting with the settings:")

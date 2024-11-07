@@ -184,15 +184,19 @@ def predict(**args):
     args['out_dir'] = Path(Path(args['predict_model_dir']), "predictions")
     args['out_dir'].mkdir(parents=True, exist_ok=True)
 
-    result = infer(args)
+    predict_list = infer(args)    # list of paths to prediction .png(s)
 
     if args['accept'] == 'application/json':
-        return {'result': f"Inference result(s) saved to {', '.join(result)}"}
+        message = {
+            'result': f"Inference result(s) saved to {', '.join(predict_list)}"
+        }
+    elif args['accept'] == 'image/png':
+        message = open(predict_list[0], "rb")
+
     else:
         raise ValueError(f"Accept type '{args['accept']}' is not supported.")
-    # elif args['accept'] == 'image/png':
-    #     # NOTE: Can't handle PIL Image (ValueError: Unsupported body type)
-    #     return Image.open(result[0])
+
+    return message
 
 
 if __name__ == '__main__':
