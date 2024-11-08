@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 import shutil
 
-from aiohttp.web import HTTPBadRequest, HTTPException
+from aiohttp.web import HTTPBadRequest
 
 from tbbrdet_api import configs
 
@@ -203,25 +203,20 @@ def run_subprocess(command: list, process_message: str,
 
         else:
             _, err = process.communicate()
-            print(f"Error while running '{str_command}' for {process_message}."
-                  f" Terminated with return code {return_code}.")  # log.error
+            logger.error(f"Error while running '{str_command}' for {process_message}.\n"
+                         f" Terminated with return code {return_code}.")  # log.error
             process.terminate()
-            raise HTTPException(reason=err)  # works without TypeError?...
+            raise MemoryError(err)
 
     except TimeoutExpired:
         process.terminate()
         logger.error(f"Timeout during {process_message} while running"
                      f"\n'{str_command}'\n{timeout} seconds were exceeded.")
-        raise
-        # NOTE: can't "raise HTTPServerError(reason=f"Timeout during ...)"
-        #  because it causes a TypeError: __init__ required ...
+        raise TimeoutError
 
     except Exception as e:
         process.terminate()
-        logger.error(f"An error occurred during {process_message}: {str(e)}")
-        raise
-        # NOTE: can't "raise HTTPServerError(reason=str(e))"
-        #  because it causes a TypeError: __init__ required ..
+        raise MemoryError(e)
 
     return
 

@@ -7,7 +7,6 @@ USAGE
 Inference on provided data
 """
 # imports
-from aiohttp.web import HTTPError
 from pathlib import Path
 import logging
 import shutil
@@ -32,6 +31,7 @@ def infer(args):
     try:
         # Input file is path or directory
         npy_paths = collect_image_paths(Path(args['input']))
+
     except TypeError:
         # Input file is path from a browsing webargs field
         tmp_filepath = Path(args['input'].filename)
@@ -42,6 +42,7 @@ def infer(args):
             )
         shutil.copy(tmp_filepath, new_filepath)
         npy_paths = [new_filepath]
+
     except Exception as e:
         raise ValueError(e)
 

@@ -196,7 +196,7 @@ class PredictArgsSchema(Schema):
 
     accept = fields.Str(
         load_default='image/png',
-        validate=validate.OneOf(['application/json', 'image/png']),
+        validate=validate.OneOf(['image/png', 'application/json']),
         metadata={
             'location': "headers",
             'description': "Define the type of output to get back. Returns "

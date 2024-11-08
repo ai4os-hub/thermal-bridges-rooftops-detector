@@ -178,7 +178,7 @@ def predict(**args):
         logger.error(
             f"No checkpoint or config file found in "
             f"{args['predict_model_dir']}! Error: %s", e, exc_info=True)
-        raise e
+        raise IndexError(e)
 
     # define output directory regardless of whether it's remote or local
     args['out_dir'] = Path(Path(args['predict_model_dir']), "predictions")
@@ -200,26 +200,26 @@ def predict(**args):
 
 
 if __name__ == '__main__':
-    ex_args = {
-        'dataset_path': '/srv/tbbrdet_api/data/',
-        'architecture': 'swin',
-        'train_from': '/storage/tbbrdet/models/swin/coco/2023-05-10_103541/',
-        # 'scratch',
-        'device': True,
-        'epochs': 1,
-        'workers': 2,
-        'batch': 1,
-        'lr': 0.0001,
-        'seed': 42,
-        'eval': "bbox"
-    }
-    train(**ex_args)
+#    ex_args = {
+#        'dataset_path': '/srv/tbbrdet_api/data/',
+#        'architecture': 'swin',
+#        'train_from': '/storage/tbbrdet/models/swin/coco/2023-05-10_103541/',
+#        # 'scratch',
+#        'device': True,
+#        'epochs': 1,
+#        'workers': 2,
+#        'batch': 1,
+#        'lr': 0.0001,
+#        'seed': 42,
+#        'eval': "bbox"
+#    }
+#    train(**ex_args)
 
     ex_args = {
         'input':
-            '/srv/tbbrdet_api/data/test/images/Flug1_105Media/DJI_0004_R.npy',
+            '/storage/tbbrdet/DJI_0004_R.npy',
         'predict_model_dir':
-            '/srv/tbbrdet_api/models/swin/coco/2023-11-14_085259/',
+            '/srv/thermal-bridges-rooftops-detector/models/swin/coco/2023-12-07_130038/',
         'colour_channel': 'both',
         'threshold': 0.3,
         'device': True,
