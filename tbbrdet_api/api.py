@@ -15,7 +15,7 @@ from tbbrdet_api.scripts.train import main
 from tbbrdet_api.scripts.infer import infer
 from tbbrdet_api.misc import (
     _catch_error, extract_zst,
-    copy_file,
+    setup_folder_structure, copy_file,
     ls_folders,
 )
 
@@ -103,31 +103,22 @@ def train(**args):
         raise ValueError(f"Provided dataset_path '{args['dataset_path']}' "
                          f"does not exist as a folder containing files.")
 
+    # redefine DATA_PATH to the user provided argument
+    configs.DATA_PATH = Path(args.get('dataset_path', configs.DATA_PATH))
+    
     # check if provided dataset_path contains .tar.zst files to extract
-    tar_zst_paths = sorted(Path(args['dataset_path']).rglob("*.tar.zst"))
-    json_paths = sorted(Path(args['dataset_path']).glob("*.json"))
+    tar_zst_paths = sorted(configs.DATA_PATH.rglob("*.tar.zst"))
+    json_paths = sorted(configs.DATA_PATH.glob("*.json"))
 
     if tar_zst_paths and json_paths:
-        logger.info(f"Provided dataset_path '{args['dataset_path']}' "
-                    f"contains .tar.zst files to extract, "
-                    f"extracting them into '{configs.DATA_PATH}'...")
+        logger.info(f"Provided dataset_path '{configs.DATA_PATH}' "
+                    f"contains .tar.zst files to extract.")
+
         # handle zipped image numpy files through extraction
-        extract_zst(Path(args['dataset_path']))
+        extract_zst(data_dir=configs.DATA_PATH)
 
-        # handle annotation files through moving to destination directory
-        for json_path in json_paths:
-            if "100-104" in json_path.name:
-                copy_file(json_path, Path(configs.DATA_PATH, "train"))
-            elif "105" in json_path.name:
-                copy_file(json_path, Path(configs.DATA_PATH, "test"))
-            else:
-                logger.warning(f"Annotation file {json_path} is neither the "
-                               f"train nor test file. Not copying.")
-
-        # delete duplicates in DATA_PATH folder
-        if Path(args['dataset_path']) == configs.DATA_PATH:
-            for json_path in json_paths:
-                json_path.unlink()
+        # setup folder structure and move all files where they belong for training
+        setup_folder_structure(data_dir=configs.DATA_PATH)
 
     elif (all(folder in os.listdir(configs.DATA_PATH)
               for folder in ["train", "test"])
@@ -201,7 +192,7 @@ def predict(**args):
 
 if __name__ == '__main__':
 #    ex_args = {
-#        'dataset_path': '/srv/tbbrdet_api/data/',
+#        'dataset_path': '/storage/tbbrdet/datasets/',
 #        'architecture': 'swin',
 #        'train_from': '/storage/tbbrdet/models/swin/coco/2023-05-10_103541/',
 #        # 'scratch',

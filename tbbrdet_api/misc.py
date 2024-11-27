@@ -71,30 +71,34 @@ def set_log(log_dir):
     logging.getLogger().addHandler(console)
 
 
-def extract_zst(zst_folder: Path = configs.DATA_PATH):
+def extract_zst(data_dir: Path = Path(configs.DATA_PATH)):
     """
     Extracting the files from the tar.zst files
 
     Args:
-        zst_folder (Path): Path to folder containing .tar.zst files to extract
-
-    Returns:
-        limit_exceeded (Bool): True if no more data is allowed to be extracted
-
+        data_dir (Path): Path to folder containing .tar.zst files
     """
     log_disk_usage("Begin extracting .tar.zst files")
 
-    for zst_path in Path(zst_folder).glob("**/*.tar.zst"):
+    # define the timeout according to the data location
+    # (outside the docker container will take much longer)
+    if str(configs.BASE_PATH) in str(data_dir):
+        timeout = 600
+    else:
+        timeout = 6000
+
+    for zst_path in Path(data_dir).glob("**/*.tar.zst"):
         tar_command = ["tar", "-I", "zstd", "-xf",  # -v flag to print names
-                       str(zst_path), "-C", str(configs.DATA_PATH)]
+                       str(zst_path), "-C", str(data_dir)]
 
         run_subprocess(
             tar_command,
-            process_message=f"unpacking '{zst_path.name}'"
-        )   # with default timeout = 10 min
+            process_message=f"unpacking '{zst_path.name}'",
+            timeout=timeout
+        )
 
-        # check if zst file is in config.DATA_PATH, if so delete to save space
-        if configs.DATA_PATH in zst_path.parents:
+        # delete zst_path file in destination directory to save space
+        if data_dir in zst_path.parents:
             logger.info(f"Removing .tar.zst file '{zst_path.name}' "
                         f"after extraction to save storage space.")
             zst_path.unlink()
@@ -119,7 +123,67 @@ def ls_folders(directory: Path = configs.MODEL_PATH,
         list: list of relevant .pth file paths
     """
     logger.debug(f"Scanning through '{directory}' with pattern '{pattern}'")
-    return sorted(set([str(d.parent) for d in Path(directory).rglob(pattern)]))
+    pth_list = sorted(set([d.parent for d in Path(directory).rglob(pattern)]))
+
+    if pattern == "*.npy":
+        filtered_paths = []
+        for pth in pth_list:
+            # check if "train" or "test" appears in any parent directory
+            valid_parent = next(
+                (str(p.parent) for p in pth.parents if "train" in p.name or "test" in p.name),
+                None
+            )
+            if valid_parent:  # only add path if the condition is fulfilled
+                filtered_paths.append(valid_parent)
+
+        pth_list = sorted(set(filtered_paths))  # remove duplicates
+
+    return pth_list
+
+
+def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
+    """
+    Create the test / train folder structure if it does not already exist.
+    |--- test/
+    |     |--- annotations/
+    |     |--- images/
+    |--- train/
+    |     |--- annotations/
+    |     |--- images/
+    
+    Args:
+        data_dir (str or Path): The base directory where the structure will be created.
+    """
+    # Get current files / folders in data_dir
+    exist_paths = sorted(data_dir.iterdir())
+
+    # Create new folders
+    folders = [
+        Path(data_dir, "test", "annotations"),
+        Path(data_dir, "test", "images"),
+        Path(data_dir, "train", "annotations"),
+        Path(data_dir, "train", "images"),
+    ]
+
+    for folder in folders:
+        folder.mkdir(parents=True, exist_ok=True)
+    print(f"Folder structure created at: {data_dir}")
+    
+    # Move files
+    assoc = {"train": ["100", "101", "102", "103", "104"],
+             "test": ["105"]}
+    
+    for pth in exist_paths:
+        dataset = next((k for k, ids in assoc.items() if any(s in pth.stem for s in ids)), None)
+
+        if dataset:
+            if pth.is_dir():  # Image folders
+                shutil.move(str(pth), str(Path(data_dir, dataset, "images")))
+
+            elif pth.suffix == ".json":  # Annotation files
+                shutil.move(str(pth), str(Path(data_dir, dataset, "annotations")))
+        else:
+            raise ValueError(f"File '{pth}' does not match train or test dataset names.")
 
 
 def get_weights_folder(data: dict):

@@ -31,13 +31,30 @@ class TrainArgsSchema(Schema):
     #         "description": "Model backbone options."
     #     }
     # )
+    # dataset_path = fields.String(
+    #     metadata={
+    #         "description": "Path to the dataset. If none is provided, "
+    #                        f"the local '{configs.DATA_PATH}' folder will be "
+    #                        "searched.\nIf connected, you can also use the "
+    #                        f"remote folder '{configs.REMOTE_DATA_PATH}'.",
+    #     },
+    #     required=False,
+    #     load_default=configs.DATA_PATH
+    # )
+
     dataset_path = fields.String(
         metadata={
             "description": "Path to the dataset. If none is provided, "
-                           f"the local '{configs.DATA_PATH}' folder will be "
-                           "searched.\nIf connected, you can also use the "
-                           f"remote folder '{configs.REMOTE_DATA_PATH}'.",
+                           "the dataset in the 'data' folder will be used "
+                           "or else downloaded from Nextcloud if local "
+                           "'data' is empty.",
         },
+        validate=validate.OneOf(
+            ls_folders(configs.DATA_PATH, pattern="*.tar.zst") +
+            ls_folders(configs.DATA_PATH, pattern="*.npy") +
+            ls_folders(configs.REMOTE_PATH, pattern="*.tar.zst") +
+            ls_folders(configs.REMOTE_PATH, pattern="*.npy")
+        ),
         required=False,
         load_default=configs.DATA_PATH
     )
