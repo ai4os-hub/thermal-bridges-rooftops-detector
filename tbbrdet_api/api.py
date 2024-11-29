@@ -42,9 +42,10 @@ def get_metadata():
         'home_page': configs.API_METADATA.get("home_page"),
         'license': configs.API_METADATA.get("license"),
         'version': configs.API_METADATA.get("version"),
-        'datasets_LOCAL': ls_folders(configs.DATA_PATH, '*.npy'),
-        'datasets_REMOTE': [str(p) for p in
-                            configs.REMOTE_DATA_PATH.glob("[!.]*")],
+        'datasets_LOCAL_zipped': ls_folders(configs.DATA_PATH, '*.tar.zst'),
+        'datasets_LOCAL_unpacked': ls_folders(configs.DATA_PATH, '*.npy'),
+        'datasets_REMOTE_zipped': ls_folders(configs.REMOTE_PATH, '*.tar.zst'),
+        'datasets_REMOTE_unpacked': ls_folders(configs.REMOTE_PATH, '*.npy'),
         'model_folders_train_LOCAL': ls_folders(configs.MODEL_PATH),
         'model_folders_train_REMOTE': ls_folders(configs.REMOTE_MODEL_PATH),
         'model_folders_infer_LOCAL': ls_folders(configs.MODEL_PATH,

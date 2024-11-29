@@ -130,20 +130,23 @@ def ls_folders(directory: Path = configs.MODEL_PATH,
         for pth in pth_list:
             # check if "train" or "test" appears in any parent directory
             valid_parent = next(
-                (str(p.parent) for p in pth.parents if "train" in p.name or "test" in p.name),
+                (str(p.parent) for p in pth.parents 
+                 if "train" in p.name or "test" in p.name),
                 None
             )
             if valid_parent:  # only add path if the condition is fulfilled
                 filtered_paths.append(valid_parent)
 
-        pth_list = sorted(set(filtered_paths))  # remove duplicates
+        return sorted(set(filtered_paths))  # remove duplicates
 
-    return pth_list
+    else:
+        return [str(p) for p in pth_list]
 
 
 def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
     """
-    Create the test / train folder structure if it does not already exist.
+    Create and populate the test / train folder structure if it does
+    not already exist.
     |--- test/
     |     |--- annotations/
     |     |--- images/
@@ -152,7 +155,7 @@ def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
     |     |--- images/
     
     Args:
-        data_dir (str or Path): The base directory where the structure will be created.
+        data_dir (str or Path): Directory where the structure will be created.
     """
     # Get current files / folders in data_dir
     exist_paths = sorted(data_dir.iterdir())
@@ -174,7 +177,10 @@ def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
              "test": ["105"]}
     
     for pth in exist_paths:
-        dataset = next((k for k, ids in assoc.items() if any(s in pth.stem for s in ids)), None)
+        dataset = next(
+            (k for k, ids in assoc.items() if any(s in pth.stem for s in ids)),
+            None
+        )
 
         if dataset:
             if pth.is_dir():  # Image folders
@@ -183,7 +189,9 @@ def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
             elif pth.suffix == ".json":  # Annotation files
                 shutil.move(str(pth), str(Path(data_dir, dataset, "annotations")))
         else:
-            raise ValueError(f"File '{pth}' does not match train or test dataset names.")
+            raise ValueError(
+                f"File '{pth}' does not match train or test dataset names '{assoc}'."
+            )
 
 
 def get_weights_folder(data: dict):
