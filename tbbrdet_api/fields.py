@@ -12,7 +12,7 @@ from webargs import validate
 from marshmallow import Schema, fields, validates_schema, ValidationError
 from tbbrdet_api import configs
 from tbbrdet_api.misc import (
-    ls_folders, get_weights_folder
+    ls_folders, get_weights_folder, get_dataset_default_path
 )
 
 
@@ -31,15 +31,24 @@ class TrainArgsSchema(Schema):
     #         "description": "Model backbone options."
     #     }
     # )
-    dataset_path = fields.String(
+    
+    dataset_path = fields.Str(
         metadata={
-            "description": "Path to the dataset. If none is provided, "
-                           f"the local '{configs.DATA_PATH}' folder will be "
-                           "searched.\nIf connected, you can also use the "
-                           f"remote folder '{configs.REMOTE_DATA_PATH}'.",
+            'description':
+                'Path to the dataset. Defaults to already unpacked datasets, '
+                'otherwise selects path containing .tar.zst files that require '
+                'unzipping.\n\nAvailable paths are:\n'
+                '- local (zipped): '
+                f'{ls_folders(configs.DATA_PATH, pattern="*.tar.zst")}'
+                '\n- local (unpacked): '
+                f'{ls_folders(configs.DATA_PATH, pattern="*.npy")}'
+                '\n- remote (zipped): '
+                f'{ls_folders(configs.REMOTE_PATH, pattern="*.tar.zst")}'
+                '\n- remote (unpacked): '
+                f'{ls_folders(configs.REMOTE_PATH, pattern="*.npy")}'
         },
         required=False,
-        load_default=configs.DATA_PATH
+        load_default=get_dataset_default_path(),
     )
 
     architecture = fields.Str(
@@ -146,18 +155,17 @@ class PredictArgsSchema(Schema):
     )
 
     predict_model_dir = fields.Str(
-        load_default='/srv/thermal-bridges-rooftops-detector/models/swin/coco/'
-                     '2023-12-07_130038',
+        load_default=ls_folders(configs.MODEL_PATH, "best*.pth")[0],
         metadata={
             # 'enum': ls_folders(configs.MODEL_PATH, "best*.pth") +
             #         ls_folders(configs.REMOTE_MODEL_PATH, "best*.pth"),
             'description':
-                'Model to be used for prediction. If only remote folders are '
-                'available, the chosen one will be used and predictions saved '
-                'remotely.\n\nCurrently existing "best" model paths are'
-                '\n- locally:\n'
+                'Model to be used for prediction. Results will be saved '
+                'to a "predictions" folder in the selected model directory.'
+                '\n\nCurrently existing "best" model paths are:'
+                '\n- local:\n'
                 f'{ls_folders(configs.MODEL_PATH, "best*.pth")}'
-                '\n- remotely:\n'
+                '\n- remote:\n'
                 f'{ls_folders(configs.REMOTE_MODEL_PATH, "best*.pth")}\n'
         }
     )
@@ -195,9 +203,8 @@ class PredictArgsSchema(Schema):
     # )
 
     accept = fields.Str(
-        load_default='application/json',
-        validate=validate.OneOf(['application/json']),
-        # NOTE: can't handle 'image/png' at the moment
+        load_default='image/png',
+        validate=validate.OneOf(['image/png', 'application/json']),
         metadata={
             'location': "headers",
             'description': "Define the type of output to get back. Returns "

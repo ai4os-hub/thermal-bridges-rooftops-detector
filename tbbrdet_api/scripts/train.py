@@ -78,7 +78,7 @@ def main(args):
                          f"directory '{weights_dir}'. No training using "
                          f"{args['train_from']} pretrained weights possible!",
                          e, exc_info=True)
-            raise HTTPError(e)
+            raise IndexError(e)
 
         args['conf'] = [str(p) for p in
                         submodule_config_path.glob("*coco.pretrained.py")][-1]
@@ -110,7 +110,7 @@ def main(args):
             except IndexError as e:
                 logger.error(f"Could not find a valid architecture "
                              f"in '{args['train_from']}'!", e, exc_info=True)
-                raise HTTPError(e)
+                raise IndexError(e)
 
             submodule_config_path = Path(
                 configs.SUBMODULE_CONFIGS_PATH, args['architecture']
@@ -172,9 +172,13 @@ def main(args):
           f"Training with train_cmd:\n{train_cmd}\n"
           f"=====================")
 
-    run_subprocess(command=train_cmd, process_message="training",
-                   timeout=10000)
+    run_subprocess(
+        command=train_cmd,
+        process_message="training",
+        timeout=1800
+    )   # with timeout = 30 minutes
     logger.info(f'Model and logs were saved to {args["model_dir"]}')
+
     return args['model_dir']
 
 

@@ -95,15 +95,6 @@ try:  # Get model backbones
 except KeyError as err:
     raise RuntimeError("Undefined configuration for backbones") from err
 
-try:  # Define node space limits
-    LIMIT_GB = os.getenv("LIMIT_GB",
-                         default=int(settings['local']['limit_gb']))
-    DATA_LIMIT_GB = os.getenv("DATA_LIMIT_GB",
-                              default=int(settings['local']['data_limit_gb']))
-except Exception as err:
-    raise RuntimeError("Undefined configuration for disk memory space") \
-        from err
-
 ARCHITECTURES = os.getenv("ARCHITECTURES",
                           default=settings['model']['architectures'])
 if isinstance(ARCHITECTURES, str):

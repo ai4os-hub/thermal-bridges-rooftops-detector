@@ -8,24 +8,16 @@ import logging
 import subprocess
 from subprocess import TimeoutExpired
 import time
-import threading
 from pathlib import Path
 import sys
 import shutil
 
-from aiohttp.web import HTTPBadRequest, HTTPException
+from aiohttp.web import HTTPBadRequest
 
 from tbbrdet_api import configs
 
 logger = logging.getLogger('__name__')
 logger.setLevel(configs.LOG_LEVEL)      # previously: logging.DEBUG
-
-stop_thread = threading.Event()
-
-
-class DiskSpaceExceeded(Exception):
-    """Raised when disk space is exceeded."""
-    pass
 
 
 def _catch_error(f):
@@ -79,32 +71,34 @@ def set_log(log_dir):
     logging.getLogger().addHandler(console)
 
 
-def extract_zst(zst_folder: Path = configs.DATA_PATH):
+def extract_zst(data_dir: Path = Path(configs.DATA_PATH)):
     """
     Extracting the files from the tar.zst files
 
     Args:
-        zst_folder (Path): Path to folder containing .tar.zst files to extract
-
-    Returns:
-        limit_exceeded (Bool): True if no more data is allowed to be extracted
-
+        data_dir (Path): Path to folder containing .tar.zst files
     """
     log_disk_usage("Begin extracting .tar.zst files")
 
-    for zst_path in Path(zst_folder).glob("**/*.tar.zst"):
+    # define the timeout according to the data location
+    # (outside the docker container will take much longer)
+    if str(configs.BASE_PATH) in str(data_dir):
+        timeout = 600
+    else:
+        timeout = 6000
+
+    for zst_path in Path(data_dir).glob("**/*.tar.zst"):
         tar_command = ["tar", "-I", "zstd", "-xf",  # -v flag to print names
-                       str(zst_path), "-C", str(configs.DATA_PATH)]
+                       str(zst_path), "-C", str(data_dir)]
 
         run_subprocess(
             tar_command,
             process_message=f"unpacking '{zst_path.name}'",
-            limit_gb=configs.DATA_LIMIT_GB,
-            path_to_check=configs.DATA_PATH
+            timeout=timeout
         )
 
-        # check if zst file is in config.DATA_PATH, if so delete to save space
-        if configs.DATA_PATH in zst_path.parents:
+        # delete zst_path file in destination directory to save space
+        if data_dir in zst_path.parents:
             logger.info(f"Removing .tar.zst file '{zst_path.name}' "
                         f"after extraction to save storage space.")
             zst_path.unlink()
@@ -129,7 +123,88 @@ def ls_folders(directory: Path = configs.MODEL_PATH,
         list: list of relevant .pth file paths
     """
     logger.debug(f"Scanning through '{directory}' with pattern '{pattern}'")
-    return sorted(set([str(d.parent) for d in Path(directory).rglob(pattern)]))
+    pth_list = sorted(set([d.parent for d in Path(directory).rglob(pattern)]))
+
+    if pattern == "*.npy":
+        filtered_paths = []
+        for pth in pth_list:
+            # check if "train" or "test" appears in any parent directory
+            valid_parent = next(
+                (str(p.parent) for p in pth.parents 
+                 if "train" in p.name or "test" in p.name),
+                None
+            )
+            if valid_parent:  # only add path if the condition is fulfilled
+                filtered_paths.append(valid_parent)
+
+        return sorted(set(filtered_paths))  # remove duplicates
+
+    else:
+        return [str(p) for p in pth_list]
+
+
+def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
+    """
+    Create and populate the test / train folder structure if it does
+    not already exist.
+    |--- test/
+    |     |--- annotations/
+    |     |--- images/
+    |--- train/
+    |     |--- annotations/
+    |     |--- images/
+    
+    Args:
+        data_dir (str or Path): Directory where the structure will be created.
+    """
+    # Get current files / folders in data_dir
+    exist_paths = sorted(data_dir.iterdir())
+
+    # Create new folders
+    folders = [
+        Path(data_dir, "test", "annotations"),
+        Path(data_dir, "test", "images"),
+        Path(data_dir, "train", "annotations"),
+        Path(data_dir, "train", "images"),
+    ]
+
+    for folder in folders:
+        folder.mkdir(parents=True, exist_ok=True)
+    print(f"Folder structure created at: {data_dir}")
+    
+    # Move files
+    assoc = {"train": ["100", "101", "102", "103", "104"],
+             "test": ["105"]}
+    
+    for pth in exist_paths:
+        dataset = next(
+            (k for k, ids in assoc.items() if any(s in pth.stem for s in ids)),
+            None
+        )
+
+        if dataset:
+            if pth.is_dir():  # Image folders
+                shutil.move(str(pth), str(Path(data_dir, dataset, "images")))
+
+            elif pth.suffix == ".json":  # Annotation files
+                shutil.move(str(pth), str(Path(data_dir, dataset, "annotations")))
+        else:
+            raise ValueError(
+                f"File '{pth}' does not match train or test dataset names '{assoc}'."
+            )
+
+
+def get_dataset_default_path():
+    """Utility for training field to get the default dataset path"""
+    try:
+        default_paths = ls_folders(configs.REMOTE_PATH, pattern="*.npy")
+        if default_paths == []:
+            default_paths = ls_folders(configs.REMOTE_PATH, pattern="*.tar.zst")
+        default_path = default_paths[0]
+    except IndexError:
+        default_path = configs.DATA_PATH
+
+    return default_path
 
 
 def get_weights_folder(data: dict):
@@ -139,6 +214,7 @@ def get_weights_folder(data: dict):
 
     Args:
         data (dict): Arguments from fields.py (user inputs in swagger ui)
+
     Returns:
         Path to the folder containing pretrained weights
     """
@@ -177,9 +253,7 @@ def copy_file(frompath: Path, topath: Path):
 
 
 def run_subprocess(command: list, process_message: str,
-                   limit_gb: int = configs.LIMIT_GB,
-                   path_to_check: Path = configs.BASE_PATH,
-                   timeout: int = 500):
+                   timeout: int = 600):
     """
     Function to run a subprocess command.
     Tox security issue with subprocess is ignored here using # nosec.
@@ -187,38 +261,20 @@ def run_subprocess(command: list, process_message: str,
     Args:
         command (list): Command to be run.
         process_message (str): Message to be printed to the console.
-        limit_gb (int): Limit on the amount of disk space available on the node
-        path_to_check (Path): Directory that shouldn't exceed the GB limit
         timeout (int): Time limit by which process is limited
 
     Raises:
         TimeoutExpired: If timeout exceeded
-        DiskSpaceExceeded: If disk space limit exceeded
         Exception: If any other error occurred
     """
     log_disk_usage(f"Begin: {process_message}")
     str_command = " ".join(command)
 
-    # get absolute limit by comparing to remaining available space on node
-    limit_gb = check_available_node_space(limit_gb)
-
-    if get_disk_usage(folder=path_to_check) > limit_gb:
-        log_disk_usage(f"FAILED: {process_message}")
-        logger.error(f"Disk space limit of {limit_gb} GB exceeded "
-                     f"before {process_message} subprocess can start!")
-        raise DiskSpaceExceeded(f"Disk space limit of {limit_gb} GB exceeded "
-                                f"before {process_message} process can start!")
+    print(f"=================================\n"
+          f"Running {process_message} command:\n'{str_command}'\n"
+          f"=================================")  # logger.info
 
     try:
-        # monitor disk space usage in the background
-        monitor_thread = threading.Thread(target=monitor_disk_space,
-                                          args=(limit_gb, path_to_check, ),
-                                          daemon=True)
-        monitor_thread.start()
-        print(f"=================================\n"
-              f"Running {process_message} command:\n'{str_command}'\n"
-              f"=================================")    # logger.info
-
         process = subprocess.Popen(      # nosec
                 command,
                 stdout=subprocess.PIPE,  # Capture stdout
@@ -227,106 +283,39 @@ def run_subprocess(command: list, process_message: str,
         )
         return_code = process.wait(timeout=timeout)
 
-        if stop_thread.is_set():
-            log_disk_usage(f"FAILED: {process_message}")
-            raise DiskSpaceExceeded(
-                f"Disk space exceeded during {process_message} "
-                f"while running\n'{str_command}'\n")
-
         if return_code == 0:
             log_disk_usage(f"Finished: {process_message}")
+
         else:
             _, err = process.communicate()
-            print(f"Error while running '{str_command}' for {process_message}."
-                  f" Terminated with return code {return_code}.")  # log.error
+            logger.error(f"Error while running '{str_command}' for {process_message}.\n"
+                         f" Terminated with return code {return_code}.")  # log.error
             process.terminate()
-            raise HTTPException(reason=err)  # works without TypeError?...
+            raise MemoryError(err)
 
     except TimeoutExpired:
         process.terminate()
         logger.error(f"Timeout during {process_message} while running"
                      f"\n'{str_command}'\n{timeout} seconds were exceeded.")
-        raise
-        # NOTE: can't "raise HTTPServerError(reason=f"Timeout during ...)"
-        #  because it causes a TypeError: __init__ required ...
+        raise TimeoutError
 
-    except DiskSpaceExceeded as e:
+    except Exception as e:
         process.terminate()
-        logger.error(str(e))
-        raise
-        # NOTE: can't "raise HTTPServerError(reason=str(e))"
-        #  because it causes a TypeError: __init__ required ..
+        raise MemoryError(e)
 
     return
-
-
-def monitor_disk_space(limit_gb: int, path_to_check: Path):
-    """
-    Thread function to monitor disk space and check the current usage
-    doesn't exceed the defined limit.
-
-    Raises:
-        DiskSpaceExceeded: If available disk space exceeded during threading
-    """
-    while True:
-        time.sleep(3)
-
-        stored_gb = get_disk_usage(Path(path_to_check))
-
-        if stored_gb >= limit_gb:
-            stop_thread.set()
-            sys.exit()
-
-
-def check_available_node_space(limit_gb: int = configs.LIMIT_GB):
-    """
-    Check overall data limit on node and redefine limit if necessary.
-
-    Args:
-        limit_gb: user defined disk space limit (in GB)
-
-    Returns:
-        limit (gb) that should not be exceeded by this deployment,
-        taking into account the overall available node space
-    """
-    try:
-        # get available space on entire node (with additional buffer of 3 GB)
-        available_gb = int(subprocess.getoutput(
-            "df -h | grep 'overlay' | awk '{print $4}'"
-        ).split("G")[0])
-        available_gb = max(available_gb - 3, 0)
-    except ValueError as e:
-        logger.error(f"ValueError: Node disk space not readable. "
-                     f"Using provided limit of {limit_gb} GB.")
-        raise HTTPException(reason=str(e)) from e
-
-    current_gb = get_disk_usage()
-    leftover_gb = round(limit_gb - current_gb, 2)
-    if leftover_gb < available_gb:
-        return limit_gb
-    else:
-        new_limit_gb = round(current_gb + available_gb, 2)
-        print(f"Available disk space on node ({available_gb} GB) is less "
-              f"than the leftover deployment space ({leftover_gb} GB) "
-              f"until the user-defined limit ({limit_gb} GB) is reached. "
-              f"Limit will be reduced to {new_limit_gb} GB.")  # logger.warning
-        return new_limit_gb
-
-
-def get_disk_usage(folder: Path = configs.BASE_PATH):
-    """Get the current amount of GB (rounded to two decimals) stored
-    in the provided folder.
-    """
-    return round(sum(f.stat().st_size for f in folder.rglob('*')
-                     if f.is_file()) / (1024 ** 3), 2)
 
 
 def log_disk_usage(process_message: str):
     """Log used disk space to the terminal with a process_message describing
     what has occurred.
     """
+    disk_usage = round(
+        sum(f.stat().st_size for f in configs.BASE_PATH.rglob('*')
+        if f.is_file()) / (1024 ** 3), 2
+    )
     print(f"{process_message} --- Repository currently takes up "
-          f"{get_disk_usage()} GB.")  # logger.info
+          f"{disk_usage} GB.")  # logger.info
 
 
 if __name__ == '__main__':

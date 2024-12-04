@@ -7,7 +7,6 @@ USAGE
 Inference on provided data
 """
 # imports
-from aiohttp.web import HTTPError
 from pathlib import Path
 import logging
 import shutil
@@ -32,14 +31,20 @@ def infer(args):
     try:
         # Input file is path or directory
         npy_paths = collect_image_paths(Path(args['input']))
+
     except TypeError:
-        # Input file is from a browsing webargs field
+        # Input file is path from a browsing webargs field
         tmp_filepath = Path(args['input'].filename)
         new_filepath = Path(configs.DATA_PATH, args['input'].original_filename)
+        if new_filepath.suffix != ".npy":
+            raise ValueError(
+                f"Selected input '{new_filepath.name}' is not a .npy!"
+            )
         shutil.copy(tmp_filepath, new_filepath)
         npy_paths = [new_filepath]
+
     except Exception as e:
-        raise HTTPError(e)
+        raise ValueError(e)
 
     print("Predicting on image(s):\n", npy_paths)
     print("Inference starting with the settings:")
@@ -63,9 +68,10 @@ def infer(args):
             # "--out-dir", str(out_path)
         ]))
 
-        run_subprocess(command=infer_cmd, process_message="inference",
-                       limit_gb=configs.LIMIT_GB,
-                       timeout=10000)
+        run_subprocess(
+            command=infer_cmd,
+            process_message="inference"
+        )   # with default timeout = 10 min
 
         result.append(str(out_path))
         print(f'Inference result was saved to {out_path}')

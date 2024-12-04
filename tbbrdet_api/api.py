@@ -15,7 +15,7 @@ from tbbrdet_api.scripts.train import main
 from tbbrdet_api.scripts.infer import infer
 from tbbrdet_api.misc import (
     _catch_error, extract_zst,
-    copy_file,
+    setup_folder_structure, copy_file,
     ls_folders,
 )
 
@@ -42,9 +42,10 @@ def get_metadata():
         'home_page': configs.API_METADATA.get("home_page"),
         'license': configs.API_METADATA.get("license"),
         'version': configs.API_METADATA.get("version"),
-        'datasets_LOCAL': ls_folders(configs.DATA_PATH, '*.npy'),
-        'datasets_REMOTE': [str(p) for p in
-                            configs.REMOTE_DATA_PATH.glob("[!.]*")],
+        'datasets_LOCAL_zipped': ls_folders(configs.DATA_PATH, '*.tar.zst'),
+        'datasets_LOCAL_unpacked': ls_folders(configs.DATA_PATH, '*.npy'),
+        'datasets_REMOTE_zipped': ls_folders(configs.REMOTE_PATH, '*.tar.zst'),
+        'datasets_REMOTE_unpacked': ls_folders(configs.REMOTE_PATH, '*.npy'),
         'model_folders_train_LOCAL': ls_folders(configs.MODEL_PATH),
         'model_folders_train_REMOTE': ls_folders(configs.REMOTE_MODEL_PATH),
         'model_folders_infer_LOCAL': ls_folders(configs.MODEL_PATH,
@@ -103,31 +104,22 @@ def train(**args):
         raise ValueError(f"Provided dataset_path '{args['dataset_path']}' "
                          f"does not exist as a folder containing files.")
 
+    # redefine DATA_PATH to the user provided argument
+    configs.DATA_PATH = Path(args.get('dataset_path', configs.DATA_PATH))
+    
     # check if provided dataset_path contains .tar.zst files to extract
-    tar_zst_paths = sorted(Path(args['dataset_path']).rglob("*.tar.zst"))
-    json_paths = sorted(Path(args['dataset_path']).glob("*.json"))
+    tar_zst_paths = sorted(configs.DATA_PATH.rglob("*.tar.zst"))
+    json_paths = sorted(configs.DATA_PATH.glob("*.json"))
 
     if tar_zst_paths and json_paths:
-        logger.info(f"Provided dataset_path '{args['dataset_path']}' "
-                    f"contains .tar.zst files to extract, "
-                    f"extracting them into '{configs.DATA_PATH}'...")
+        logger.info(f"Provided dataset_path '{configs.DATA_PATH}' "
+                    f"contains .tar.zst files to extract.")
+
         # handle zipped image numpy files through extraction
-        extract_zst(Path(args['dataset_path']))
+        extract_zst(data_dir=configs.DATA_PATH)
 
-        # handle annotation files through moving to destination directory
-        for json_path in json_paths:
-            if "100-104" in json_path.name:
-                copy_file(json_path, Path(configs.DATA_PATH, "train"))
-            elif "105" in json_path.name:
-                copy_file(json_path, Path(configs.DATA_PATH, "test"))
-            else:
-                logger.warning(f"Annotation file {json_path} is neither the "
-                               f"train nor test file. Not copying.")
-
-        # delete duplicates in DATA_PATH folder
-        if Path(args['dataset_path']) == configs.DATA_PATH:
-            for json_path in json_paths:
-                json_path.unlink()
+        # setup folder structure and move all files where they belong for training
+        setup_folder_structure(data_dir=configs.DATA_PATH)
 
     elif (all(folder in os.listdir(configs.DATA_PATH)
               for folder in ["train", "test"])
@@ -178,44 +170,48 @@ def predict(**args):
         logger.error(
             f"No checkpoint or config file found in "
             f"{args['predict_model_dir']}! Error: %s", e, exc_info=True)
-        raise e
+        raise IndexError(e)
 
     # define output directory regardless of whether it's remote or local
     args['out_dir'] = Path(Path(args['predict_model_dir']), "predictions")
     args['out_dir'].mkdir(parents=True, exist_ok=True)
 
-    result = infer(args)
+    predict_list = infer(args)    # list of paths to prediction .png(s)
 
     if args['accept'] == 'application/json':
-        return {'result': f"Inference result(s) saved to {', '.join(result)}"}
+        message = {
+            'result': f"Inference result(s) saved to {', '.join(predict_list)}"
+        }
+    elif args['accept'] == 'image/png':
+        message = open(predict_list[0], "rb")
+
     else:
         raise ValueError(f"Accept type '{args['accept']}' is not supported.")
-    # elif args['accept'] == 'image/png':
-    #     # NOTE: Can't handle PIL Image (ValueError: Unsupported body type)
-    #     return Image.open(result[0])
+
+    return message
 
 
 if __name__ == '__main__':
-    ex_args = {
-        'dataset_path': '/srv/tbbrdet_api/data/',
-        'architecture': 'swin',
-        'train_from': '/storage/tbbrdet/models/swin/coco/2023-05-10_103541/',
-        # 'scratch',
-        'device': True,
-        'epochs': 1,
-        'workers': 2,
-        'batch': 1,
-        'lr': 0.0001,
-        'seed': 42,
-        'eval': "bbox"
-    }
-    train(**ex_args)
+#    ex_args = {
+#        'dataset_path': '/storage/tbbrdet/datasets/',
+#        'architecture': 'swin',
+#        'train_from': '/storage/tbbrdet/models/swin/coco/2023-05-10_103541/',
+#        # 'scratch',
+#        'device': True,
+#        'epochs': 1,
+#        'workers': 2,
+#        'batch': 1,
+#        'lr': 0.0001,
+#        'seed': 42,
+#        'eval': "bbox"
+#    }
+#    train(**ex_args)
 
     ex_args = {
         'input':
-            '/srv/tbbrdet_api/data/test/images/Flug1_105Media/DJI_0004_R.npy',
+            '/storage/tbbrdet/DJI_0004_R.npy',
         'predict_model_dir':
-            '/srv/tbbrdet_api/models/swin/coco/2023-11-14_085259/',
+            '/srv/thermal-bridges-rooftops-detector/models/swin/coco/2023-12-07_130038/',
         'colour_channel': 'both',
         'threshold': 0.3,
         'device': True,
