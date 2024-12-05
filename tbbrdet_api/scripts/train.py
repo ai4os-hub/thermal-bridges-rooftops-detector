@@ -24,7 +24,7 @@ python train.py configs/mmdet/<MODEL_NAME>/..._coco.scratch.py
 from datetime import datetime
 import os
 import os.path as osp
-from aiohttp.web import HTTPError  # HTTPException
+# from aiohttp.web import HTTPError, HTTPException
 import logging
 from pathlib import Path
 import yaml

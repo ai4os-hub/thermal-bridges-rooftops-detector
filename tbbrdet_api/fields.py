@@ -31,13 +31,13 @@ class TrainArgsSchema(Schema):
     #         "description": "Model backbone options."
     #     }
     # )
-    
+
     dataset_path = fields.Str(
         metadata={
             'description':
                 'Path to the dataset. Defaults to already unpacked datasets, '
-                'otherwise selects path containing .tar.zst files that require '
-                'unzipping.\n\nAvailable paths are:\n'
+                'otherwise selects path containing .tar.zst files that '
+                'require unzipping.\n\nAvailable paths are:\n'
                 '- local (zipped): '
                 f'{ls_folders(configs.DATA_PATH, pattern="*.tar.zst")}'
                 '\n- local (unpacked): '

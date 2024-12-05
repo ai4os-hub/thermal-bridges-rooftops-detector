@@ -1,7 +1,7 @@
 # tbbrdet_api
 [![Build Status](https://jenkins.services.ai4os.eu/buildStatus/icon?job=AI4OS-hub/thermal-bridges-rooftops-detector/main)](https://jenkins.services.ai4os.eu/job/AI4OS-hub/job/thermal-bridges-rooftops-detector/job/main/)
 
-DEEPaaS API for [TBBRDet model](https://github.com/Helmholtz-AI-Energy/TBBRDet)
+DEEPaaS API for [TBBRDet model](https://github.com/emvollmer/TBBRDet).
 
 To launch it, first install the package via the provided bash scripts, then run [deepaas](https://github.com/ai4os/DEEPaaS):
 ```bash
@@ -46,4 +46,13 @@ deep-start
 │   └── misc.py            <- Script containing helper functions
 │
 └── Jenkinsfile            <- Describes basic Jenkins CI/CD pipeline
+```
+
+## Testing
+
+The testing process is automated via the tox library. To check style, coverage and security, run:
+
+```bash
+$ pip install tox
+$ tox
 ```

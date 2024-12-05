@@ -7,9 +7,7 @@ from functools import wraps
 import logging
 import subprocess
 from subprocess import TimeoutExpired
-import time
 from pathlib import Path
-import sys
 import shutil
 
 from aiohttp.web import HTTPBadRequest
@@ -130,7 +128,7 @@ def ls_folders(directory: Path = configs.MODEL_PATH,
         for pth in pth_list:
             # check if "train" or "test" appears in any parent directory
             valid_parent = next(
-                (str(p.parent) for p in pth.parents 
+                (str(p.parent) for p in pth.parents
                  if "train" in p.name or "test" in p.name),
                 None
             )
@@ -153,7 +151,7 @@ def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
     |--- train/
     |     |--- annotations/
     |     |--- images/
-    
+
     Args:
         data_dir (str or Path): Directory where the structure will be created.
     """
@@ -171,11 +169,11 @@ def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
     for folder in folders:
         folder.mkdir(parents=True, exist_ok=True)
     print(f"Folder structure created at: {data_dir}")
-    
+
     # Move files
     assoc = {"train": ["100", "101", "102", "103", "104"],
              "test": ["105"]}
-    
+
     for pth in exist_paths:
         dataset = next(
             (k for k, ids in assoc.items() if any(s in pth.stem for s in ids)),
@@ -184,22 +182,27 @@ def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
 
         if dataset:
             if pth.is_dir():  # Image folders
-                shutil.move(str(pth), str(Path(data_dir, dataset, "images")))
+                shutil.move(str(pth),
+                            str(Path(data_dir, dataset, "images")))
 
             elif pth.suffix == ".json":  # Annotation files
-                shutil.move(str(pth), str(Path(data_dir, dataset, "annotations")))
+                shutil.move(str(pth),
+                            str(Path(data_dir, dataset, "annotations")))
         else:
             raise ValueError(
-                f"File '{pth}' does not match train or test dataset names '{assoc}'."
+                f"File '{pth}' does not match train or test "
+                f"dataset names '{assoc}'."
             )
 
 
 def get_dataset_default_path():
     """Utility for training field to get the default dataset path"""
     try:
-        default_paths = ls_folders(configs.REMOTE_PATH, pattern="*.npy")
+        default_paths = ls_folders(configs.REMOTE_PATH,
+                                   pattern="*.npy")
         if default_paths == []:
-            default_paths = ls_folders(configs.REMOTE_PATH, pattern="*.tar.zst")
+            default_paths = ls_folders(configs.REMOTE_PATH,
+                                       pattern="*.tar.zst")
         default_path = default_paths[0]
     except IndexError:
         default_path = configs.DATA_PATH
@@ -288,8 +291,9 @@ def run_subprocess(command: list, process_message: str,
 
         else:
             _, err = process.communicate()
-            logger.error(f"Error while running '{str_command}' for {process_message}.\n"
-                         f" Terminated with return code {return_code}.")  # log.error
+            logger.error(f"Error while running '{str_command}' for "
+                         f"{process_message}.\nTerminated with return code "
+                         f"{return_code}.")  # log.error
             process.terminate()
             raise MemoryError(err)
 
@@ -307,13 +311,12 @@ def run_subprocess(command: list, process_message: str,
 
 
 def log_disk_usage(process_message: str):
-    """Log used disk space to the terminal with a process_message describing
-    what has occurred.
+    """Log used disk space to the terminal with a process_message
+    describing what has occurred.
     """
-    disk_usage = round(
-        sum(f.stat().st_size for f in configs.BASE_PATH.rglob('*')
-        if f.is_file()) / (1024 ** 3), 2
-    )
+    disk_usage = round(sum(
+        f.stat().st_size for f in configs.BASE_PATH.rglob('*') if f.is_file()
+    ) / (1024 ** 3), 2)
     print(f"{process_message} --- Repository currently takes up "
           f"{disk_usage} GB.")  # logger.info
 
