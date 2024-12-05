@@ -195,19 +195,27 @@ def setup_folder_structure(data_dir: Path = Path(configs.DATA_PATH)):
             )
 
 
-def get_dataset_default_path():
-    """Utility for training field to get the default dataset path"""
-    try:
-        default_paths = ls_folders(configs.REMOTE_PATH,
-                                   pattern="*.npy")
-        if default_paths == []:
-            default_paths = ls_folders(configs.REMOTE_PATH,
-                                       pattern="*.tar.zst")
-        default_path = default_paths[0]
-    except IndexError:
-        default_path = configs.DATA_PATH
+def get_default_path(directory_list: list, pattern_list: list):
+    """
+    Utility to get the default path for marshmallow fields
 
-    return default_path
+    Args:
+        directory_list (list): Path directories to be checked
+        pattern_list (list): patterns to be looked for
+
+    Returns:
+        A default path for the marshmallow field in question
+    """
+    try:
+        for d in directory_list:
+            for p in pattern_list:
+                default_paths = ls_folders(d, pattern=p)
+
+                if default_paths != []:
+                    return default_paths[0]
+
+    except IndexError:
+        return ""
 
 
 def get_weights_folder(data: dict):

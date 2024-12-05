@@ -12,7 +12,7 @@ from webargs import validate
 from marshmallow import Schema, fields, validates_schema, ValidationError
 from tbbrdet_api import configs
 from tbbrdet_api.misc import (
-    ls_folders, get_weights_folder, get_dataset_default_path
+    ls_folders, get_weights_folder, get_default_path
 )
 
 
@@ -48,7 +48,8 @@ class TrainArgsSchema(Schema):
                 f'{ls_folders(configs.REMOTE_PATH, pattern="*.npy")}'
         },
         required=False,
-        load_default=get_dataset_default_path(),
+        load_default=get_default_path([configs.REMOTE_PATH, configs.DATA_PATH],
+                                      pattern_list=["*.npy", "*.tar.zst"])
     )
 
     architecture = fields.Str(
@@ -155,7 +156,6 @@ class PredictArgsSchema(Schema):
     )
 
     predict_model_dir = fields.Str(
-        load_default=ls_folders(configs.MODEL_PATH, "best*.pth")[0],
         metadata={
             # 'enum': ls_folders(configs.MODEL_PATH, "best*.pth") +
             #         ls_folders(configs.REMOTE_MODEL_PATH, "best*.pth"),
@@ -167,7 +167,11 @@ class PredictArgsSchema(Schema):
                 f'{ls_folders(configs.MODEL_PATH, "best*.pth")}'
                 '\n- remote:\n'
                 f'{ls_folders(configs.REMOTE_MODEL_PATH, "best*.pth")}\n'
-        }
+        },
+        load_default=get_default_path(
+            [configs.MODEL_PATH, configs.REMOTE_MODEL_PATH],
+            pattern_list=["best*.pth"]
+        )
     )
 
     colour_channel = fields.Str(
